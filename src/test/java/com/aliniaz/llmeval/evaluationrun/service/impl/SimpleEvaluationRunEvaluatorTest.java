@@ -161,4 +161,38 @@ class SimpleEvaluationRunEvaluatorTest {
                 "Critical expected output field failed: status"
         );
     }
+
+    @Test
+    void shouldAssignZeroScoreWhenCriticalRequiredFactIsMissing() {
+        EvaluationCase evaluationCase = mock(EvaluationCase.class);
+        EvaluationRun evaluationRun = mock(EvaluationRun.class);
+
+        when(evaluationRun.getParsedOutput()).thenReturn(Map.of(
+                "status", "INSUFFICIENT_INFORMATION",
+                "reason", "The model cannot answer from the provided input."
+        ));
+        when(evaluationRun.getEvaluationCase()).thenReturn(evaluationCase);
+
+        when(evaluationCase.getExpectedOutput()).thenReturn(Map.of(
+                "status", "INSUFFICIENT_INFORMATION"
+        ));
+        when(evaluationCase.getRequiredFacts()).thenReturn(List.of(
+                "Shipping status is not specified"
+        ));
+        when(evaluationCase.getForbiddenClaims()).thenReturn(List.of());
+        when(evaluationCase.getScoringRules()).thenReturn(Map.of(
+                "criticalRequiredFacts", List.of("Shipping status is not specified")
+        ));
+
+        EvaluationResult result = evaluator.evaluate(evaluationRun);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.score()).isEqualByComparingTo(new BigDecimal("0.00"));
+        assertThat(result.failureReasons()).contains(
+                "Missing required fact: Shipping status is not specified"
+        );
+        assertThat(result.failureReasons()).contains(
+                "Critical required fact missing: Shipping status is not specified"
+        );
+    }
 }

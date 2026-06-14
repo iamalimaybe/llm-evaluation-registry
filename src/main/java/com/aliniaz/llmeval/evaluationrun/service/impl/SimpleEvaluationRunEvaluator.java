@@ -34,7 +34,10 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
         List<String> failureReasons = new ArrayList<>();
 
         List<String> criticalExpectedFields = criticalExpectedFields(evaluationCase.getScoringRules());
+        List<String> criticalRequiredFacts = criticalRequiredFacts(evaluationCase.getScoringRules());
+
         boolean criticalExpectedFieldFailed = false;
+        boolean criticalRequiredFactMissing = false;
 
         int totalChecks = 0;
         int passedChecks = 0;
@@ -82,6 +85,11 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
                     passedChecks++;
                 } else {
                     failureReasons.add("Missing required fact: " + requiredFact);
+
+                    if (criticalRequiredFacts.contains(requiredFact)) {
+                        criticalRequiredFactMissing = true;
+                        failureReasons.add("Critical required fact missing: " + requiredFact);
+                    }
                 }
             }
         }
@@ -108,7 +116,7 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
             return failed("No evaluation checks are configured for this evaluation case.");
         }
 
-        if (criticalExpectedFieldFailed) {
+        if (criticalExpectedFieldFailed || criticalRequiredFactMissing) {
             return new EvaluationResult(
                     false,
                     BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
@@ -169,5 +177,27 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
         }
 
         return fields;
+    }
+
+    private List<String> criticalRequiredFacts(Map<String, Object> scoringRules) {
+        if (scoringRules == null || scoringRules.isEmpty()) {
+            return List.of();
+        }
+
+        Object value = scoringRules.get("criticalRequiredFacts");
+
+        if (!(value instanceof List<?> values)) {
+            return List.of();
+        }
+
+        List<String> facts = new ArrayList<>();
+
+        for (Object item : values) {
+            if (item instanceof String fact && !fact.isBlank()) {
+                facts.add(fact.trim());
+            }
+        }
+
+        return facts;
     }
 }
