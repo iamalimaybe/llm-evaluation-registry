@@ -59,13 +59,7 @@ public class PromptVersionServiceImpl implements PromptVersionService {
     @Override
     @Transactional(readOnly = true)
     public PromptVersionResponse getPromptVersion(Long workflowId, Long promptVersionId) {
-        workflowService.getWorkflowEntity(workflowId);
-
-        return promptVersionRepository.findByIdAndWorkflowId(promptVersionId, workflowId)
-                .map(this::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Prompt version not found with id: " + promptVersionId
-                ));
+        return toResponse(getPromptVersionEntity(workflowId, promptVersionId));
     }
 
     private PromptVersionResponse toResponse(PromptVersion promptVersion) {
@@ -79,5 +73,16 @@ public class PromptVersionServiceImpl implements PromptVersionService {
                 promptVersion.getCreatedAt(),
                 promptVersion.getUpdatedAt()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PromptVersion getPromptVersionEntity(Long workflowId, Long promptVersionId) {
+        workflowService.getWorkflowEntity(workflowId);
+
+        return promptVersionRepository.findByIdAndWorkflowId(promptVersionId, workflowId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Prompt version not found with id: " + promptVersionId
+                ));
     }
 }

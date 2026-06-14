@@ -63,13 +63,7 @@ public class EvaluationCaseServiceImpl implements EvaluationCaseService {
     @Override
     @Transactional(readOnly = true)
     public EvaluationCaseResponse getEvaluationCase(Long workflowId, Long evaluationCaseId) {
-        workflowService.getWorkflowEntity(workflowId);
-
-        return evaluationCaseRepository.findByIdAndWorkflowId(evaluationCaseId, workflowId)
-                .map(this::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Evaluation case not found with id: " + evaluationCaseId
-                ));
+        return toResponse(getEvaluationCaseEntity(workflowId, evaluationCaseId));
     }
 
     private EvaluationCaseResponse toResponse(EvaluationCase evaluationCase) {
@@ -87,5 +81,16 @@ public class EvaluationCaseServiceImpl implements EvaluationCaseService {
                 evaluationCase.getCreatedAt(),
                 evaluationCase.getUpdatedAt()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EvaluationCase getEvaluationCaseEntity(Long workflowId, Long evaluationCaseId) {
+        workflowService.getWorkflowEntity(workflowId);
+
+        return evaluationCaseRepository.findByIdAndWorkflowId(evaluationCaseId, workflowId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Evaluation case not found with id: " + evaluationCaseId
+                ));
     }
 }
