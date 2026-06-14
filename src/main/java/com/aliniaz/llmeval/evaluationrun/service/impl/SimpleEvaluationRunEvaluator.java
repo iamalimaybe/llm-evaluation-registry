@@ -33,6 +33,9 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
 
         List<String> failureReasons = new ArrayList<>();
 
+        List<String> criticalExpectedFields = criticalExpectedFields(evaluationCase.getScoringRules());
+        boolean criticalExpectedFieldFailed = false;
+
         int totalChecks = 0;
         int passedChecks = 0;
 
@@ -54,6 +57,11 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
                                     actualValue
                             )
                     );
+
+                    if (criticalExpectedFields.contains(expectedEntry.getKey())) {
+                        criticalExpectedFieldFailed = true;
+                        failureReasons.add("Critical expected output field failed: " + expectedEntry.getKey());
+                    }
                 }
             }
         }
@@ -100,6 +108,14 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
             return failed("No evaluation checks are configured for this evaluation case.");
         }
 
+        if (criticalExpectedFieldFailed) {
+            return new EvaluationResult(
+                    false,
+                    BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
+                    failureReasons
+            );
+        }
+
         BigDecimal score = BigDecimal.valueOf(passedChecks)
                 .multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(totalChecks), 2, RoundingMode.HALF_UP);
@@ -131,5 +147,27 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
         return value == null
                 ? ""
                 : value.toLowerCase().replaceAll("\\s+", " ").trim();
+    }
+
+    private List<String> criticalExpectedFields(Map<String, Object> scoringRules) {
+        if (scoringRules == null || scoringRules.isEmpty()) {
+            return List.of();
+        }
+
+        Object value = scoringRules.get("criticalExpectedFields");
+
+        if (!(value instanceof List<?> values)) {
+            return List.of();
+        }
+
+        List<String> fields = new ArrayList<>();
+
+        for (Object item : values) {
+            if (item instanceof String field && !field.isBlank()) {
+                fields.add(field.trim());
+            }
+        }
+
+        return fields;
     }
 }

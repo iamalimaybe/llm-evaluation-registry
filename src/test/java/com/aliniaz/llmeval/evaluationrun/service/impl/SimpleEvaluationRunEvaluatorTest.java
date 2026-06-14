@@ -125,4 +125,40 @@ class SimpleEvaluationRunEvaluatorTest {
                 "No evaluation checks are configured for this evaluation case."
         );
     }
+
+    @Test
+    void shouldAssignZeroScoreWhenCriticalExpectedFieldIsMissing() {
+        EvaluationCase evaluationCase = mock(EvaluationCase.class);
+        EvaluationRun evaluationRun = mock(EvaluationRun.class);
+
+        when(evaluationRun.getParsedOutput()).thenReturn(Map.of(
+                "context", "The customer asked about shipping status.",
+                "instruction", "Extract supported facts only."
+        ));
+        when(evaluationRun.getEvaluationCase()).thenReturn(evaluationCase);
+
+        when(evaluationCase.getExpectedOutput()).thenReturn(Map.of(
+                "status", "INSUFFICIENT_INFORMATION"
+        ));
+        when(evaluationCase.getRequiredFacts()).thenReturn(List.of(
+                "The customer asked about shipping status"
+        ));
+        when(evaluationCase.getForbiddenClaims()).thenReturn(List.of(
+                "delivered"
+        ));
+        when(evaluationCase.getScoringRules()).thenReturn(Map.of(
+                "criticalExpectedFields", List.of("status")
+        ));
+
+        EvaluationResult result = evaluator.evaluate(evaluationRun);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.score()).isEqualByComparingTo(new BigDecimal("0.00"));
+        assertThat(result.failureReasons()).contains(
+                "Expected output field 'status' to be 'INSUFFICIENT_INFORMATION' but was 'null'."
+        );
+        assertThat(result.failureReasons()).contains(
+                "Critical expected output field failed: status"
+        );
+    }
 }
