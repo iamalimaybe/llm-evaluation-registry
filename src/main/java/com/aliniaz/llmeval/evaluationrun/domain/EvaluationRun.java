@@ -148,6 +148,8 @@ public class EvaluationRun {
             List<String> failureReasons,
             String reviewerNotes
     ) {
+        LocalDateTime now = LocalDateTime.now();
+
         this.rawOutput = rawOutput;
         this.parsedOutput = parsedOutput;
         this.confidence = confidence;
@@ -158,6 +160,7 @@ public class EvaluationRun {
         this.status = Boolean.TRUE.equals(passed)
                 ? EvaluationRunStatus.PASSED
                 : EvaluationRunStatus.FAILED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = now;
+        this.updatedAt = now;
     }
 }
