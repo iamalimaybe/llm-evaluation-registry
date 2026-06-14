@@ -195,4 +195,38 @@ class SimpleEvaluationRunEvaluatorTest {
                 "Critical required fact missing: Shipping status is not specified"
         );
     }
+
+    @Test
+    void shouldAssignZeroScoreWhenCriticalForbiddenClaimAppears() {
+        EvaluationCase evaluationCase = mock(EvaluationCase.class);
+        EvaluationRun evaluationRun = mock(EvaluationRun.class);
+
+        when(evaluationRun.getParsedOutput()).thenReturn(Map.of(
+                "status", "INSUFFICIENT_INFORMATION",
+                "reason", "The package was delivered."
+        ));
+        when(evaluationRun.getEvaluationCase()).thenReturn(evaluationCase);
+
+        when(evaluationCase.getExpectedOutput()).thenReturn(Map.of(
+                "status", "INSUFFICIENT_INFORMATION"
+        ));
+        when(evaluationCase.getRequiredFacts()).thenReturn(List.of());
+        when(evaluationCase.getForbiddenClaims()).thenReturn(List.of(
+                "delivered"
+        ));
+        when(evaluationCase.getScoringRules()).thenReturn(Map.of(
+                "criticalForbiddenClaims", List.of("delivered")
+        ));
+
+        EvaluationResult result = evaluator.evaluate(evaluationRun);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.score()).isEqualByComparingTo(new BigDecimal("0.00"));
+        assertThat(result.failureReasons()).contains(
+                "Output contains forbidden claim: delivered"
+        );
+        assertThat(result.failureReasons()).contains(
+                "Critical forbidden claim found: delivered"
+        );
+    }
 }

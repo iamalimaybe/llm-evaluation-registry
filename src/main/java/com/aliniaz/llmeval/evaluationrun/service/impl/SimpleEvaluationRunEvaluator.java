@@ -35,9 +35,11 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
 
         List<String> criticalExpectedFields = criticalExpectedFields(evaluationCase.getScoringRules());
         List<String> criticalRequiredFacts = criticalRequiredFacts(evaluationCase.getScoringRules());
+        List<String> criticalForbiddenClaims = criticalForbiddenClaims(evaluationCase.getScoringRules());
 
         boolean criticalExpectedFieldFailed = false;
         boolean criticalRequiredFactMissing = false;
+        boolean criticalForbiddenClaimFound = false;
 
         int totalChecks = 0;
         int passedChecks = 0;
@@ -106,6 +108,11 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
 
                 if (parsedOutputText.contains(normalize(forbiddenClaim))) {
                     failureReasons.add("Output contains forbidden claim: " + forbiddenClaim);
+
+                    if (criticalForbiddenClaims.contains(forbiddenClaim)) {
+                        criticalForbiddenClaimFound = true;
+                        failureReasons.add("Critical forbidden claim found: " + forbiddenClaim);
+                    }
                 } else {
                     passedChecks++;
                 }
@@ -116,7 +123,7 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
             return failed("No evaluation checks are configured for this evaluation case.");
         }
 
-        if (criticalExpectedFieldFailed || criticalRequiredFactMissing) {
+        if (criticalExpectedFieldFailed || criticalRequiredFactMissing || criticalForbiddenClaimFound) {
             return new EvaluationResult(
                     false,
                     BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
@@ -199,5 +206,27 @@ public class SimpleEvaluationRunEvaluator implements EvaluationRunEvaluator {
         }
 
         return facts;
+    }
+
+    private List<String> criticalForbiddenClaims(Map<String, Object> scoringRules) {
+        if (scoringRules == null || scoringRules.isEmpty()) {
+            return List.of();
+        }
+
+        Object value = scoringRules.get("criticalForbiddenClaims");
+
+        if (!(value instanceof List<?> values)) {
+            return List.of();
+        }
+
+        List<String> claims = new ArrayList<>();
+
+        for (Object item : values) {
+            if (item instanceof String claim && !claim.isBlank()) {
+                claims.add(claim.trim());
+            }
+        }
+
+        return claims;
     }
 }
