@@ -1,17 +1,13 @@
 package com.aliniaz.llmeval.evaluationrun.api;
 
+import com.aliniaz.llmeval.evaluationrun.api.request.CompleteEvaluationRunRequest;
 import com.aliniaz.llmeval.evaluationrun.api.request.CreateEvaluationRunRequest;
 import com.aliniaz.llmeval.evaluationrun.api.response.EvaluationRunResponse;
 import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -41,5 +37,14 @@ public class EvaluationRunController {
             @PathVariable Long evaluationRunId
     ) {
         return evaluationRunService.getEvaluationRun(workflowId, evaluationRunId);
+    }
+
+    @PatchMapping("/api/workflows/{workflowId}/evaluation-runs/{evaluationRunId}/result")
+    public EvaluationRunResponse completeEvaluationRun(
+            @PathVariable Long workflowId,
+            @PathVariable Long evaluationRunId,
+            @Valid @RequestBody CompleteEvaluationRunRequest request
+    ) {
+        return evaluationRunService.completeEvaluationRun(workflowId, evaluationRunId, request);
     }
 }

@@ -138,4 +138,26 @@ public class EvaluationRun {
     void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void complete(
+            String rawOutput,
+            Map<String, Object> parsedOutput,
+            BigDecimal confidence,
+            Boolean passed,
+            BigDecimal score,
+            List<String> failureReasons,
+            String reviewerNotes
+    ) {
+        this.rawOutput = rawOutput;
+        this.parsedOutput = parsedOutput;
+        this.confidence = confidence;
+        this.passed = passed;
+        this.score = score;
+        this.failureReasons = failureReasons;
+        this.reviewerNotes = reviewerNotes;
+        this.status = Boolean.TRUE.equals(passed)
+                ? EvaluationRunStatus.PASSED
+                : EvaluationRunStatus.FAILED;
+        this.completedAt = LocalDateTime.now();
+    }
 }

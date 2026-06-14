@@ -1,5 +1,6 @@
 package com.aliniaz.llmeval.evaluationrun.service;
 
+import com.aliniaz.llmeval.evaluationrun.api.request.CompleteEvaluationRunRequest;
 import com.aliniaz.llmeval.evaluationrun.api.request.CreateEvaluationRunRequest;
 import com.aliniaz.llmeval.evaluationrun.api.response.EvaluationRunResponse;
 
@@ -12,4 +13,10 @@ public interface EvaluationRunService {
     List<EvaluationRunResponse> getEvaluationRuns(Long workflowId);
 
     EvaluationRunResponse getEvaluationRun(Long workflowId, Long evaluationRunId);
+
+    EvaluationRunResponse completeEvaluationRun(
+            Long workflowId,
+            Long evaluationRunId,
+            CompleteEvaluationRunRequest request
+    );
 }

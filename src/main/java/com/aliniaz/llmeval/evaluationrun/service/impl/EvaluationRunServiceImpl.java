@@ -3,6 +3,7 @@ package com.aliniaz.llmeval.evaluationrun.service.impl;
 import com.aliniaz.llmeval.common.exception.ResourceNotFoundException;
 import com.aliniaz.llmeval.evaluationcase.domain.EvaluationCase;
 import com.aliniaz.llmeval.evaluationcase.service.EvaluationCaseService;
+import com.aliniaz.llmeval.evaluationrun.api.request.CompleteEvaluationRunRequest;
 import com.aliniaz.llmeval.evaluationrun.api.request.CreateEvaluationRunRequest;
 import com.aliniaz.llmeval.evaluationrun.api.response.EvaluationRunResponse;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRun;
@@ -108,5 +109,31 @@ public class EvaluationRunServiceImpl implements EvaluationRunService {
                 evaluationRun.getCreatedAt(),
                 evaluationRun.getUpdatedAt()
         );
+    }
+
+    @Override
+    public EvaluationRunResponse completeEvaluationRun(
+            Long workflowId,
+            Long evaluationRunId,
+            CompleteEvaluationRunRequest request
+    ) {
+        workflowService.getWorkflowEntity(workflowId);
+
+        EvaluationRun evaluationRun = evaluationRunRepository.findByIdAndWorkflowId(evaluationRunId, workflowId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Evaluation run not found with id: " + evaluationRunId
+                ));
+
+        evaluationRun.complete(
+                request.rawOutput(),
+                request.parsedOutput(),
+                request.confidence(),
+                request.passed(),
+                request.score(),
+                request.failureReasons(),
+                request.reviewerNotes()
+        );
+
+        return toResponse(evaluationRun);
     }
 }
