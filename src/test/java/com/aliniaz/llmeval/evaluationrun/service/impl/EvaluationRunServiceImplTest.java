@@ -10,6 +10,9 @@ import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRun;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunProvider;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunRepository;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunStatus;
+import com.aliniaz.llmeval.evaluationrun.service.EvaluationResult;
+import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunEvaluator;
+import com.aliniaz.llmeval.modelexecution.service.*;
 import com.aliniaz.llmeval.prompt.domain.PromptVersion;
 import com.aliniaz.llmeval.prompt.service.PromptVersionService;
 import com.aliniaz.llmeval.workflow.domain.AiWorkflow;
@@ -45,6 +48,21 @@ class EvaluationRunServiceImplTest {
 
     @Mock
     private EvaluationCaseService evaluationCaseService;
+
+    @Mock
+    private ModelExecutionClientRouter modelExecutionClientRouter;
+
+    @Mock
+    private ModelExecutionClient modelExecutionClient;
+
+    @Mock
+    private PromptExecutionBuilder promptExecutionBuilder;
+
+    @Mock
+    private ModelOutputParser modelOutputParser;
+
+    @Mock
+    private EvaluationRunEvaluator evaluationRunEvaluator;
 
     @InjectMocks
     private EvaluationRunServiceImpl evaluationRunService;
@@ -381,5 +399,104 @@ class EvaluationRunServiceImplTest {
 
         verify(workflowService).getWorkflowEntity(2L);
         verify(evaluationRunRepository).findByIdAndWorkflowId(200L, 2L);
+    }
+
+    @Test
+    void executeEvaluationRunShouldCaptureParseAndEvaluateModelOutput() {
+        AiWorkflow workflow = new AiWorkflow(
+                "Shipping Status Evaluation",
+                "Evaluates whether model output avoids unsupported shipping claims"
+        );
+        workflow.setId(2L);
+
+        PromptVersion promptVersion = new PromptVersion(
+                workflow,
+                "v1",
+                "Extract supported facts only.",
+                "Initial extraction prompt"
+        );
+        promptVersion.setId(2L);
+
+        EvaluationCase evaluationCase = new EvaluationCase(
+                workflow,
+                "Missing shipping status",
+                "EXTRACTION",
+                Map.of("message", "The customer asked about shipping status."),
+                Map.of("status", "INSUFFICIENT_INFORMATION"),
+                List.of("Shipping status is not specified"),
+                List.of("shipped", "delivered"),
+                null
+        );
+        evaluationCase.setId(2L);
+
+        EvaluationRun evaluationRun = new EvaluationRun(
+                workflow,
+                promptVersion,
+                evaluationCase,
+                "qwen3:4b",
+                null,
+                EvaluationRunProvider.OLLAMA,
+                BigDecimal.ZERO,
+                Map.of("contextWindow", 4096, "numPredict", 512)
+        );
+        evaluationRun.setId(14L);
+
+        String controlledPrompt = "Controlled execution prompt";
+
+        String rawOutput = """
+            {
+              "context": "The customer asked about shipping status.",
+              "instruction": "Extract supported facts only."
+            }
+            """;
+
+        Map<String, Object> parsedOutput = Map.of(
+                "context", "The customer asked about shipping status.",
+                "instruction", "Extract supported facts only."
+        );
+
+        EvaluationResult evaluationResult = new EvaluationResult(
+                false,
+                new BigDecimal("66.67"),
+                List.of("Expected output field 'status' to be 'INSUFFICIENT_INFORMATION' but was 'null'.")
+        );
+
+        when(workflowService.getWorkflowEntity(2L)).thenReturn(workflow);
+        when(evaluationRunRepository.findByIdAndWorkflowId(14L, 2L))
+                .thenReturn(Optional.of(evaluationRun));
+        when(promptExecutionBuilder.buildPrompt(evaluationRun)).thenReturn(controlledPrompt);
+        when(modelExecutionClientRouter.getClient(any(ModelExecutionRequest.class)))
+                .thenReturn(modelExecutionClient);
+        when(modelExecutionClient.execute(any(ModelExecutionRequest.class)))
+                .thenReturn(new ModelExecutionResponse(
+                        rawOutput,
+                        Map.of("provider", "OLLAMA", "model", "qwen3:4b", "format", "json")
+                ));
+        when(modelOutputParser.parse(rawOutput)).thenReturn(parsedOutput);
+        when(evaluationRunEvaluator.evaluate(evaluationRun)).thenReturn(evaluationResult);
+
+        EvaluationRunResponse response = evaluationRunService.executeEvaluationRun(2L, 14L);
+
+        assertThat(response.status()).isEqualTo(EvaluationRunStatus.FAILED);
+        assertThat(response.rawOutput()).isEqualTo(rawOutput);
+        assertThat(response.parsedOutput()).containsEntry(
+                "context",
+                "The customer asked about shipping status."
+        );
+        assertThat(response.passed()).isFalse();
+        assertThat(response.score()).isEqualByComparingTo("66.67");
+        assertThat(response.failureReasons()).containsExactly(
+                "Expected output field 'status' to be 'INSUFFICIENT_INFORMATION' but was 'null'."
+        );
+        assertThat(response.startedAt()).isNotNull();
+        assertThat(response.completedAt()).isNotNull();
+
+        verify(workflowService).getWorkflowEntity(2L);
+        verify(evaluationRunRepository).findByIdAndWorkflowId(14L, 2L);
+        verify(promptExecutionBuilder).buildPrompt(evaluationRun);
+        verify(modelExecutionClientRouter).getClient(any(ModelExecutionRequest.class));
+        verify(modelExecutionClient).execute(any(ModelExecutionRequest.class));
+        verify(modelOutputParser).parse(rawOutput);
+        verify(evaluationRunEvaluator).evaluate(evaluationRun);
     }
 }

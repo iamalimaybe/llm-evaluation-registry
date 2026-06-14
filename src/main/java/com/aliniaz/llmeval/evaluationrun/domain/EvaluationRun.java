@@ -192,4 +192,30 @@ public class EvaluationRun {
         this.completedAt = now;
         this.updatedAt = now;
     }
+
+    public void recordParsedOutput(Map<String, Object> parsedOutput) {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.parsedOutput = parsedOutput;
+        this.status = EvaluationRunStatus.OUTPUT_CAPTURED;
+        this.completedAt = now;
+        this.updatedAt = now;
+    }
+
+    public void recordEvaluationResult(
+            Boolean passed,
+            BigDecimal score,
+            List<String> failureReasons
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.passed = passed;
+        this.score = score;
+        this.failureReasons = failureReasons;
+        this.status = Boolean.TRUE.equals(passed)
+                ? EvaluationRunStatus.PASSED
+                : EvaluationRunStatus.FAILED;
+        this.completedAt = now;
+        this.updatedAt = now;
+    }
 }

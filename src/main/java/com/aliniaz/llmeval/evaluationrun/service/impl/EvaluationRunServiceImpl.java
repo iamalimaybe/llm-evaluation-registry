@@ -9,17 +9,14 @@ import com.aliniaz.llmeval.evaluationrun.api.response.EvaluationRunResponse;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRun;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunProvider;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunRepository;
+import com.aliniaz.llmeval.evaluationrun.service.EvaluationResult;
+import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunEvaluator;
 import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunService;
-import com.aliniaz.llmeval.modelexecution.service.ModelExecutionClient;
-import com.aliniaz.llmeval.modelexecution.service.ModelExecutionClientRouter;
-import com.aliniaz.llmeval.modelexecution.service.ModelExecutionRequest;
-import com.aliniaz.llmeval.modelexecution.service.ModelExecutionResponse;
+import com.aliniaz.llmeval.modelexecution.service.*;
 import com.aliniaz.llmeval.prompt.domain.PromptVersion;
 import com.aliniaz.llmeval.prompt.service.PromptVersionService;
 import com.aliniaz.llmeval.workflow.domain.AiWorkflow;
 import com.aliniaz.llmeval.workflow.service.WorkflowService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +35,9 @@ public class EvaluationRunServiceImpl implements EvaluationRunService {
     private final EvaluationCaseService evaluationCaseService;
 
     private final ModelExecutionClientRouter modelExecutionClientRouter;
-    private final ObjectMapper objectMapper;
+    private final PromptExecutionBuilder promptExecutionBuilder;
+    private final ModelOutputParser modelOutputParser;
+    private final EvaluationRunEvaluator evaluationRunEvaluator;
 
     @Override
     public EvaluationRunResponse createEvaluationRun(Long workflowId, CreateEvaluationRunRequest request) {
@@ -162,7 +161,7 @@ public class EvaluationRunServiceImpl implements EvaluationRunService {
             ModelExecutionRequest executionRequest = new ModelExecutionRequest(
                     evaluationRun.getProvider(),
                     evaluationRun.getModelName(),
-                    buildPrompt(evaluationRun),
+                    promptExecutionBuilder.buildPrompt(evaluationRun),
                     evaluationRun.getTemperature(),
                     evaluationRun.getRunConfig()
             );
@@ -171,31 +170,19 @@ public class EvaluationRunServiceImpl implements EvaluationRunService {
             ModelExecutionResponse executionResponse = client.execute(executionRequest);
 
             evaluationRun.recordModelOutput(executionResponse.rawOutput());
+            evaluationRun.recordParsedOutput(modelOutputParser.parse(executionResponse.rawOutput()));
+
+            EvaluationResult evaluationResult = evaluationRunEvaluator.evaluate(evaluationRun);
+
+            evaluationRun.recordEvaluationResult(
+                    evaluationResult.passed(),
+                    evaluationResult.score(),
+                    evaluationResult.failureReasons()
+            );
         } catch (RuntimeException exception) {
             evaluationRun.recordExecutionError(exception.getMessage());
         }
 
         return toResponse(evaluationRun);
-    }
-
-    private String buildPrompt(EvaluationRun evaluationRun) {
-        try {
-            String inputPayloadJson = objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(evaluationRun.getEvaluationCase().getInputPayload());
-
-            return """
-                %s
-
-                Evaluation input:
-                %s
-
-                Return only the model output requested by the prompt.
-                """.formatted(
-                    evaluationRun.getPromptVersion().getPromptText(),
-                    inputPayloadJson
-            );
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("Failed to build model execution prompt.", exception);
-        }
     }
 }

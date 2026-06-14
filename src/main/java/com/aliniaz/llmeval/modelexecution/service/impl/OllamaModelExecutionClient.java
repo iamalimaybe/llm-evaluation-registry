@@ -14,8 +14,6 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.commons.lang3.StringUtils.firstNonBlank;
-
 @Service
 @RequiredArgsConstructor
 public class OllamaModelExecutionClient implements ModelExecutionClient {
@@ -39,6 +37,7 @@ public class OllamaModelExecutionClient implements ModelExecutionClient {
                 request.prompt(),
                 false,
                 false,
+                "json",
                 buildOptions(request)
         );
 
@@ -65,7 +64,8 @@ public class OllamaModelExecutionClient implements ModelExecutionClient {
                     ollamaResponse.response(),
                     Map.of(
                             "provider", EvaluationRunProvider.OLLAMA.name(),
-                            "model", request.modelName()
+                            "model", request.modelName(),
+                            "format", "json"
                     )
             );
         } catch (RestClientException exception) {
@@ -107,6 +107,7 @@ public class OllamaModelExecutionClient implements ModelExecutionClient {
             String prompt,
             boolean stream,
             Boolean think,
+            String format,
             Map<String, Object> options
     ) {
     }
