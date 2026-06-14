@@ -19,4 +19,6 @@ public interface EvaluationRunService {
             Long evaluationRunId,
             CompleteEvaluationRunRequest request
     );
+
+    EvaluationRunResponse executeEvaluationRun(Long workflowId, Long evaluationRunId);
 }

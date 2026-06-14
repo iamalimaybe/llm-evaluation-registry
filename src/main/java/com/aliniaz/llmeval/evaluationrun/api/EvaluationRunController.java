@@ -47,4 +47,12 @@ public class EvaluationRunController {
     ) {
         return evaluationRunService.completeEvaluationRun(workflowId, evaluationRunId, request);
     }
+
+    @PostMapping("/api/workflows/{workflowId}/evaluation-runs/{evaluationRunId}/execute")
+    public EvaluationRunResponse executeEvaluationRun(
+            @PathVariable Long workflowId,
+            @PathVariable Long evaluationRunId
+    ) {
+        return evaluationRunService.executeEvaluationRun(workflowId, evaluationRunId);
+    }
 }

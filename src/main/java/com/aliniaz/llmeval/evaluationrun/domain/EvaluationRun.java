@@ -163,4 +163,33 @@ public class EvaluationRun {
         this.completedAt = now;
         this.updatedAt = now;
     }
+
+    public void markRunning() {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.status = EvaluationRunStatus.RUNNING;
+        this.startedAt = now;
+        this.completedAt = null;
+        this.updatedAt = now;
+    }
+
+    public void recordModelOutput(String rawOutput) {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.rawOutput = rawOutput;
+        this.status = EvaluationRunStatus.OUTPUT_CAPTURED;
+        this.completedAt = now;
+        this.updatedAt = now;
+    }
+
+    public void recordExecutionError(String failureReason) {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.status = EvaluationRunStatus.ERROR;
+        this.passed = false;
+        this.score = BigDecimal.ZERO;
+        this.failureReasons = List.of(failureReason);
+        this.completedAt = now;
+        this.updatedAt = now;
+    }
 }
