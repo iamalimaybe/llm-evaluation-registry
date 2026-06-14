@@ -94,6 +94,28 @@ Example response:
 }
 ```
 
+### Scoring Rules
+
+Evaluation cases can define optional scoring rules to make specific checks critical.
+
+Example:
+
+```json
+{
+  "criticalExpectedFields": ["status"],
+  "criticalRequiredFacts": ["Shipping status is not specified"],
+  "criticalForbiddenClaims": ["delivered"]
+}
+```
+
+Supported rules:
+
+* `criticalExpectedFields`: if any listed expected output field is missing or wrong, the run fails with score `0.00`
+* `criticalRequiredFacts`: if any listed required fact is missing from the parsed output, the run fails with score `0.00`
+* `criticalForbiddenClaims`: if any listed forbidden claim appears in the parsed output, the run fails with score `0.00`
+
+This keeps scoring from being misleading when a model passes minor checks but fails a critical requirement.
+
 ### Regression Comparison Example
 
 The comparison endpoint compares a baseline evaluation run against a candidate run.
@@ -139,6 +161,7 @@ Example response:
 * Record manual pass/fail results, scores, confidence, failure reasons, and reviewer notes
 * Compare a baseline evaluation run against a candidate run
 * Detect simple regression outcomes such as `IMPROVED`, `REGRESSED`, `UNCHANGED`, and `NOT_COMPARABLE`
+* Configure critical scoring rules for expected fields, required facts, and forbidden claims
 
 ### Current Design
 
