@@ -44,9 +44,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional(readOnly = true)
     public WorkflowResponse getWorkflow(Long id) {
-        return workflowRepository.findById(id)
-                .map(this::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException("Workflow not found with id: " + id));
+        return toResponse(getWorkflowEntity(id));
     }
 
     private WorkflowResponse toResponse(AiWorkflow workflow) {
@@ -58,5 +56,12 @@ public class WorkflowServiceImpl implements WorkflowService {
                 workflow.getCreatedAt(),
                 workflow.getUpdatedAt()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AiWorkflow getWorkflowEntity(Long id) {
+        return workflowRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow not found with id: " + id));
     }
 }
