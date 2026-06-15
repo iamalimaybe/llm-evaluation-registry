@@ -24,6 +24,20 @@ OpenAPI JSON is available at:
 http://localhost:8080/v3/api-docs
 ```
 
+### Environment Configuration
+
+Local configuration can be provided through environment variables.
+
+```text
+OLLAMA_BASE_URL=http://localhost:11434
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com
+```
+
+`OPENAI_API_KEY` is optional unless executing runs with `provider = OPENAI`.
+
+The root `.env` file is local-only and should not be committed. Use `.env.example` as the committed reference.
+
 ### Main API Flow
 
 A typical evaluation registry flow is:
@@ -101,6 +115,48 @@ Example response:
   ]
 }
 ```
+
+### Model Providers
+
+The registry supports provider-based model execution through a shared model execution abstraction.
+
+Currently supported providers:
+
+```text
+OLLAMA
+OPENAI
+MANUAL
+```
+
+`OLLAMA` is used for local model execution through a locally running Ollama server.
+
+`OPENAI` is used for remote model execution through the OpenAI Responses API. It requires an API key with active API billing/quota.
+
+Example OpenAI run request:
+
+```json
+{
+    "promptVersionId": 10,
+    "evaluationCaseId": 24,
+    "modelName": "gpt-4.1-mini",
+    "provider": "OPENAI",
+    "temperature": 0,
+    "runConfig": {
+      "numPredict": 128
+    }
+}
+```
+
+The same evaluation pipeline is used regardless of provider:
+
+1. Build controlled execution prompt
+2. Execute model through selected provider
+3. Store raw model output
+4. Parse JSON output
+5. Evaluate parsed output against deterministic checks
+6. Store pass/fail result, score, and failure reasons
+
+OpenAI support is optional. Local development can still use Ollama without an OpenAI API key.
 
 ### Scoring Rules
 
@@ -291,6 +347,9 @@ Example response:
 * Create and list reusable evaluation cases
 * Create evaluation runs with model and runtime metadata
 * Execute evaluation runs through Ollama
+* Execute evaluation runs through OpenAI when an API key with active billing/quota is configured
+* Route model execution through provider-specific clients
+* Capture provider execution failures as persisted evaluation run errors
 * Build controlled model execution prompts from prompt versions and evaluation case input
 * Store raw model output
 * Parse valid JSON model output into structured `parsedOutput`
@@ -326,7 +385,9 @@ scratch/test-batch-flow.ps1
 scratch/test-batch-comparison-flow.ps1
 scratch/test-cancel-queued-batch.ps1
 scratch/test-cancel-running-batch.ps1
+scratch/test-openai-provider-flow.ps1
 ```
+The OpenAI smoke script requires `OPENAI_API_KEY` and active API billing/quota. Without quota, the run is expected to persist an `ERROR` result with the provider error response.
 
 These scripts are not a replacement for unit tests or CI. They are local verification helpers for exercising the API with a running Spring Boot app, PostgreSQL database, and Ollama model.
 
@@ -339,6 +400,7 @@ What they cover:
 * comparing baseline and candidate batches
 * cancelling queued batches
 * requesting cancellation for running batches
+* executing a single evaluation run through the OpenAI provider
 
 Some cancellation scripts may require local workflow and prompt version IDs to be adjusted before running.
 
