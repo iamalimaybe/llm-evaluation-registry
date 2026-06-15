@@ -116,6 +116,60 @@ Supported rules:
 
 This keeps scoring from being misleading when a model passes minor checks but fails a critical requirement.
 
+### Queued Batch Evaluation
+
+Evaluation batches allow one prompt version and model configuration to be run across all enabled evaluation cases for a workflow.
+
+Example:
+
+```text
+POST /api/workflows/{workflowId}/evaluation-batches
+```
+
+Example request:
+
+```json
+{
+  "promptVersionId": 5,
+  "modelName": "qwen3:4b",
+  "provider": "OLLAMA",
+  "temperature": 0.0,
+  "runConfig": {
+    "numPredict": 128,
+    "contextWindow": 4096
+  }
+}
+```
+
+Batch execution is asynchronous. The API returns a queued batch immediately, then a single background worker processes queued batches one at a time.
+
+Progress can be checked with:
+
+```text
+GET /api/workflows/{workflowId}/evaluation-batches/{batchId}
+```
+
+Runs created by the batch can be inspected with:
+
+```text
+GET /api/workflows/{workflowId}/evaluation-batches/{batchId}/runs
+```
+
+A batch can be cancelled with:
+
+```text
+POST /api/workflows/{workflowId}/evaluation-batches/{batchId}/cancel
+```
+
+Cancellation behavior:
+
+* QUEUED batches become CANCELLED
+* RUNNING batches become CANCEL_REQUESTED
+* The active model call is allowed to finish
+* The worker stops before starting the next evaluation case
+
+This keeps local model execution safe and predictable while still supporting queued evaluation workflows.
+
 ### Regression Comparison Example
 
 The comparison endpoint compares a baseline evaluation run against a candidate run.
@@ -162,6 +216,11 @@ Example response:
 * Compare a baseline evaluation run against a candidate run
 * Detect simple regression outcomes such as `IMPROVED`, `REGRESSED`, `UNCHANGED`, and `NOT_COMPARABLE`
 * Configure critical scoring rules for expected fields, required facts, and forbidden claims
+* Create queued evaluation batches across all enabled evaluation cases
+* Process evaluation batches asynchronously with a single local worker
+* Track batch progress, totals, pass/fail/error counts, and average score
+* View evaluation runs created by a batch
+* Cancel queued or running evaluation batches
 
 ### Current Design
 
