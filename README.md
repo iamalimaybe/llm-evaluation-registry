@@ -29,13 +29,14 @@ http://localhost:8080/v3/api-docs
 A typical evaluation registry flow is:
 
 1. Create a workflow
-2. Add a prompt version for that workflow
-3. Add an evaluation case
-4. Create an evaluation run
-5. Execute the run through a configured model provider, or record the result manually
+2. Add one or more prompt versions for that workflow
+3. Add reusable evaluation cases
+4. Create an evaluation run, or create an evaluation batch across all enabled cases
+5. Execute runs through a configured model provider, or record results manually
 6. Store raw output and parsed structured output
-7. Evaluate the parsed output against expected output, required facts, and forbidden claims
+7. Evaluate parsed output against expected output, required facts, and forbidden claims
 8. Compare a baseline run against a candidate run
+9. Compare a baseline batch against a candidate batch
 
 ### Current Endpoints
 
@@ -57,6 +58,13 @@ GET   /api/workflows/{workflowId}/evaluation-runs
 GET   /api/workflows/{workflowId}/evaluation-runs/{evaluationRunId}
 POST  /api/workflows/{workflowId}/evaluation-runs/{evaluationRunId}/execute
 PATCH /api/workflows/{workflowId}/evaluation-runs/{evaluationRunId}/result
+
+POST  /api/workflows/{workflowId}/evaluation-batches
+GET   /api/workflows/{workflowId}/evaluation-batches
+GET   /api/workflows/{workflowId}/evaluation-batches/compare?baselineBatchId={baselineBatchId}&candidateBatchId={candidateBatchId}
+GET   /api/workflows/{workflowId}/evaluation-batches/{batchId}
+POST  /api/workflows/{workflowId}/evaluation-batches/{batchId}/cancel
+GET   /api/workflows/{workflowId}/evaluation-batches/{batchId}/runs
 
 GET   /api/workflows/{workflowId}/evaluation-runs/compare?baselineRunId={baselineRunId}&candidateRunId={candidateRunId}
 ```
@@ -170,6 +178,82 @@ Cancellation behavior:
 
 This keeps local model execution safe and predictable while still supporting queued evaluation workflows.
 
+### Batch Regression Comparison
+
+Completed evaluation batches can be compared to detect whether a candidate prompt/model configuration improved, regressed, stayed unchanged, or is not comparable.
+
+Example:
+
+```text
+GET /api/workflows/{workflowId}/evaluation-batches/compare?baselineBatchId={baselineBatchId}&candidateBatchId={candidateBatchId}
+```
+
+The comparison includes:
+
+* batch status comparability
+* total and completed run counts
+* passed, failed, and errored run counts
+* average score delta
+* overall outcome
+* per-evaluation-case comparison
+* regression reasons where applicable
+
+Possible outcomes:
+
+```text
+IMPROVED
+REGRESSED
+UNCHANGED
+NOT_COMPARABLE
+```
+
+Example response:
+
+```json
+{
+  "workflowId": 7,
+  "baselineBatchId": 9,
+  "candidateBatchId": 10,
+  "baselineStatus": "COMPLETED_WITH_FAILURES",
+  "candidateStatus": "COMPLETED_WITH_FAILURES",
+  "baselineTotalRuns": 4,
+  "candidateTotalRuns": 4,
+  "baselineCompletedRuns": 4,
+  "candidateCompletedRuns": 4,
+  "baselinePassedRuns": 2,
+  "candidatePassedRuns": 2,
+  "baselineFailedRuns": 2,
+  "candidateFailedRuns": 2,
+  "baselineErroredRuns": 0,
+  "candidateErroredRuns": 0,
+  "baselineAverageScore": 50.00,
+  "candidateAverageScore": 50.00,
+  "scoreDelta": 0.00,
+  "outcome": "UNCHANGED",
+  "comparisonReasons": [
+    "Candidate batch matched baseline score and run outcome counts."
+  ],
+  "caseComparisons": [
+    {
+      "evaluationCaseId": 20,
+      "baselineRunId": 42,
+      "candidateRunId": 46,
+      "baselineStatus": "PASSED",
+      "candidateStatus": "PASSED",
+      "baselinePassed": true,
+      "candidatePassed": true,
+      "baselineScore": 100.00,
+      "candidateScore": 100.00,
+      "scoreDelta": 0.00,
+      "outcome": "UNCHANGED",
+      "regressionReasons": []
+    }
+  ]
+}
+```
+
+This is intentionally deterministic. It does not perform semantic judgment. It compares persisted evaluation results, scores, statuses, and case-level outcomes.
+
 ### Regression Comparison Example
 
 The comparison endpoint compares a baseline evaluation run against a candidate run.
@@ -214,6 +298,8 @@ Example response:
 * Store pass/fail result, score, and failure reasons
 * Record manual pass/fail results, scores, confidence, failure reasons, and reviewer notes
 * Compare a baseline evaluation run against a candidate run
+* Compare a baseline evaluation batch against a candidate batch
+* Report batch-level and per-case comparison outcomes
 * Detect simple regression outcomes such as `IMPROVED`, `REGRESSED`, `UNCHANGED`, and `NOT_COMPARABLE`
 * Configure critical scoring rules for expected fields, required facts, and forbidden claims
 * Create queued evaluation batches across all enabled evaluation cases
@@ -221,6 +307,7 @@ Example response:
 * Track batch progress, totals, pass/fail/error counts, and average score
 * View evaluation runs created by a batch
 * Cancel queued or running evaluation batches
+* Use local PowerShell smoke scripts to verify batch execution, cancellation, and comparison flows
 
 ### Current Design
 
@@ -229,6 +316,31 @@ The backend is built with Java 17, Spring Boot 3, PostgreSQL, Spring Data JPA, L
 The system is intentionally backend-first. It can create registry data, execute local model runs through Ollama, capture raw output, parse JSON output, and apply deterministic evaluation checks.
 
 The evaluator is intentionally simple at this stage. It checks expected output fields, required facts, and forbidden claims. It is not yet a full semantic evaluator.
+
+### Manual Smoke Scripts
+
+The `scratch/` folder contains PowerShell scripts used for local manual smoke testing.
+
+```text
+scratch/test-batch-flow.ps1
+scratch/test-batch-comparison-flow.ps1
+scratch/test-cancel-queued-batch.ps1
+scratch/test-cancel-running-batch.ps1
+```
+
+These scripts are not a replacement for unit tests or CI. They are local verification helpers for exercising the API with a running Spring Boot app, PostgreSQL database, and Ollama model.
+
+What they cover:
+
+* creating workflows, prompt versions, and evaluation cases
+* creating queued evaluation batches
+* polling batch progress
+* inspecting batch-created evaluation runs
+* comparing baseline and candidate batches
+* cancelling queued batches
+* requesting cancellation for running batches
+
+Some cancellation scripts may require local workflow and prompt version IDs to be adjusted before running.
 
 ### Why This Matters
 
