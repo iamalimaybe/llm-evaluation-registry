@@ -1,6 +1,7 @@
 package com.aliniaz.llmeval.evaluationrun.service.impl;
 
 import com.aliniaz.llmeval.common.exception.ResourceNotFoundException;
+import com.aliniaz.llmeval.evaluationbatch.domain.EvaluationBatch;
 import com.aliniaz.llmeval.evaluationcase.domain.EvaluationCase;
 import com.aliniaz.llmeval.evaluationcase.service.EvaluationCaseService;
 import com.aliniaz.llmeval.evaluationrun.api.request.CompleteEvaluationRunRequest;
@@ -21,7 +22,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -184,5 +187,62 @@ public class EvaluationRunServiceImpl implements EvaluationRunService {
         }
 
         return toResponse(evaluationRun);
+    }
+
+    @Override
+    public EvaluationRunResponse createAndExecuteBatchRun(
+            Long workflowId,
+            Long promptVersionId,
+            Long evaluationCaseId,
+            Long batchId,
+            String modelName,
+            String modelVersion,
+            EvaluationRunProvider provider,
+            BigDecimal temperature,
+            Map<String, Object> runConfig
+    ) {
+        AiWorkflow workflow = workflowService.getWorkflowEntity(workflowId);
+
+        PromptVersion promptVersion = promptVersionService.getPromptVersionEntity(
+                workflowId,
+                promptVersionId
+        );
+
+        EvaluationCase evaluationCase = evaluationCaseService.getEvaluationCaseEntity(
+                workflowId,
+                evaluationCaseId
+        );
+
+        EvaluationRun evaluationRun = new EvaluationRun(
+                workflow,
+                promptVersion,
+                evaluationCase,
+                modelName,
+                modelVersion,
+                provider,
+                temperature,
+                runConfig
+        );
+
+        evaluationRun.assignBatchId(batchId);
+
+        EvaluationRun savedEvaluationRun = evaluationRunRepository.save(evaluationRun);
+
+        return executeEvaluationRun(
+                workflowId,
+                savedEvaluationRun.getId()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EvaluationRunResponse> getEvaluationRunsByBatch(Long workflowId, Long batchId) {
+        workflowService.getWorkflowEntity(workflowId);
+
+        return evaluationRunRepository.findByBatchIdOrderByCreatedAtAsc(batchId)
+                .stream()
+                .filter(evaluationRun -> evaluationRun.getWorkflow().getId().equals(workflowId))
+                .map(this::toResponse)
+                .toList();
     }
 }

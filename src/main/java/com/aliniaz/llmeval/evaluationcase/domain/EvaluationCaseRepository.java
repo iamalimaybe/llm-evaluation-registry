@@ -16,4 +16,6 @@ public interface EvaluationCaseRepository extends JpaRepository<EvaluationCase, 
     List<EvaluationCase> findByWorkflowIdAndEnabledTrueOrderByCreatedAtDesc(Long workflowId);
 
     Optional<EvaluationCase> findByIdAndWorkflowId(Long id, Long workflowId);
+
+    List<EvaluationCase> findByWorkflowIdAndEnabledTrueOrderByCreatedAtAsc(Long workflowId);
 }

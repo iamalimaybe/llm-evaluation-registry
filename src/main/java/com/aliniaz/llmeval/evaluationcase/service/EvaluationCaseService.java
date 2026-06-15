@@ -15,4 +15,6 @@ public interface EvaluationCaseService {
     EvaluationCaseResponse getEvaluationCase(Long workflowId, Long evaluationCaseId);
 
     EvaluationCase getEvaluationCaseEntity(Long workflowId, Long evaluationCaseId);
+
+    List<EvaluationCase> getEnabledEvaluationCaseEntities(Long workflowId);
 }

@@ -1,21 +1,10 @@
 package com.aliniaz.llmeval.evaluationrun.domain;
 
+import com.aliniaz.llmeval.evaluationbatch.domain.EvaluationBatch;
 import com.aliniaz.llmeval.evaluationcase.domain.EvaluationCase;
 import com.aliniaz.llmeval.prompt.domain.PromptVersion;
 import com.aliniaz.llmeval.workflow.domain.AiWorkflow;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,6 +39,9 @@ public class EvaluationRun {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "evaluation_case_id", nullable = false)
     private EvaluationCase evaluationCase;
+
+    @Column(name = "batch_id")
+    private Long batchId;
 
     @Column(nullable = false, length = 120)
     private String modelName;
@@ -217,5 +209,10 @@ public class EvaluationRun {
                 : EvaluationRunStatus.FAILED;
         this.completedAt = now;
         this.updatedAt = now;
+    }
+
+    public void assignBatchId(Long batchId) {
+        this.batchId = batchId;
+        this.updatedAt = LocalDateTime.now();
     }
 }

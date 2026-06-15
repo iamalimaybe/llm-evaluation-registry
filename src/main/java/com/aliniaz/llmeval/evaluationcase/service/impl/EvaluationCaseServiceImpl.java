@@ -93,4 +93,12 @@ public class EvaluationCaseServiceImpl implements EvaluationCaseService {
                         "Evaluation case not found with id: " + evaluationCaseId
                 ));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EvaluationCase> getEnabledEvaluationCaseEntities(Long workflowId) {
+        workflowService.getWorkflowEntity(workflowId);
+
+        return evaluationCaseRepository.findByWorkflowIdAndEnabledTrueOrderByCreatedAtAsc(workflowId);
+    }
 }

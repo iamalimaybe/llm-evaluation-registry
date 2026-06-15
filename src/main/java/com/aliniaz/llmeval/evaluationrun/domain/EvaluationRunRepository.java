@@ -22,4 +22,6 @@ public interface EvaluationRunRepository extends JpaRepository<EvaluationRun, Lo
     );
 
     Optional<EvaluationRun> findByIdAndWorkflowId(Long id, Long workflowId);
+
+    List<EvaluationRun> findByBatchIdOrderByCreatedAtAsc(Long batchId);
 }
