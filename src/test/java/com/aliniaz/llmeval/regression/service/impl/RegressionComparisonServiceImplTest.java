@@ -5,6 +5,7 @@ import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunProvider;
 import com.aliniaz.llmeval.evaluationrun.domain.EvaluationRunStatus;
 import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunService;
 import com.aliniaz.llmeval.regression.api.response.EvaluationRunComparisonResponse;
+import com.aliniaz.llmeval.regression.domain.RegressionComparisonOutcome;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,7 +40,7 @@ class RegressionComparisonServiceImplTest {
                         baselineRunId,
                         workflowId,
                         true,
-                        new BigDecimal("0.92"),
+                        new BigDecimal("92.00"),
                         EvaluationRunStatus.PASSED
                 ));
 
@@ -48,7 +49,7 @@ class RegressionComparisonServiceImplTest {
                         candidateRunId,
                         workflowId,
                         false,
-                        new BigDecimal("0.60"),
+                        new BigDecimal("60.00"),
                         EvaluationRunStatus.FAILED
                 ));
 
@@ -61,12 +62,12 @@ class RegressionComparisonServiceImplTest {
         assertThat(response.workflowId()).isEqualTo(workflowId);
         assertThat(response.baselineRunId()).isEqualTo(baselineRunId);
         assertThat(response.candidateRunId()).isEqualTo(candidateRunId);
-        assertThat(response.baselineScore()).isEqualByComparingTo("0.92");
-        assertThat(response.candidateScore()).isEqualByComparingTo("0.60");
-        assertThat(response.scoreDelta()).isEqualByComparingTo("-0.32");
+        assertThat(response.baselineScore()).isEqualByComparingTo("92.00");
+        assertThat(response.candidateScore()).isEqualByComparingTo("60.00");
+        assertThat(response.scoreDelta()).isEqualByComparingTo("-32.00");
         assertThat(response.baselinePassed()).isTrue();
         assertThat(response.candidatePassed()).isFalse();
-        assertThat(response.outcome()).isEqualTo("REGRESSED");
+        assertThat(response.outcome()).isEqualTo(RegressionComparisonOutcome.REGRESSED);
         assertThat(response.regressionReasons()).containsExactly(
                 "Candidate failed while baseline passed.",
                 "Candidate score is lower than baseline score."
@@ -84,7 +85,7 @@ class RegressionComparisonServiceImplTest {
                         baselineRunId,
                         workflowId,
                         false,
-                        new BigDecimal("0.60"),
+                        new BigDecimal("60.00"),
                         EvaluationRunStatus.FAILED
                 ));
 
@@ -93,7 +94,7 @@ class RegressionComparisonServiceImplTest {
                         candidateRunId,
                         workflowId,
                         true,
-                        new BigDecimal("0.92"),
+                        new BigDecimal("92.00"),
                         EvaluationRunStatus.PASSED
                 ));
 
@@ -103,8 +104,43 @@ class RegressionComparisonServiceImplTest {
                 candidateRunId
         );
 
-        assertThat(response.scoreDelta()).isEqualByComparingTo("0.32");
-        assertThat(response.outcome()).isEqualTo("IMPROVED");
+        assertThat(response.scoreDelta()).isEqualByComparingTo("32.00");
+        assertThat(response.outcome()).isEqualTo(RegressionComparisonOutcome.IMPROVED);
+        assertThat(response.regressionReasons()).isEmpty();
+    }
+
+    @Test
+    void compareRunsReturnsUnchangedWhenCandidateMatchesBaseline() {
+        Long workflowId = 2L;
+        Long baselineRunId = 4L;
+        Long candidateRunId = 5L;
+
+        when(evaluationRunService.getEvaluationRun(workflowId, baselineRunId))
+                .thenReturn(evaluationRun(
+                        baselineRunId,
+                        workflowId,
+                        true,
+                        new BigDecimal("100.00"),
+                        EvaluationRunStatus.PASSED
+                ));
+
+        when(evaluationRunService.getEvaluationRun(workflowId, candidateRunId))
+                .thenReturn(evaluationRun(
+                        candidateRunId,
+                        workflowId,
+                        true,
+                        new BigDecimal("100.00"),
+                        EvaluationRunStatus.PASSED
+                ));
+
+        EvaluationRunComparisonResponse response = regressionComparisonService.compareRuns(
+                workflowId,
+                baselineRunId,
+                candidateRunId
+        );
+
+        assertThat(response.scoreDelta()).isEqualByComparingTo("0.00");
+        assertThat(response.outcome()).isEqualTo(RegressionComparisonOutcome.UNCHANGED);
         assertThat(response.regressionReasons()).isEmpty();
     }
 
@@ -128,7 +164,7 @@ class RegressionComparisonServiceImplTest {
                         candidateRunId,
                         workflowId,
                         true,
-                        new BigDecimal("0.92"),
+                        new BigDecimal("92.00"),
                         EvaluationRunStatus.PASSED
                 ));
 
@@ -139,7 +175,7 @@ class RegressionComparisonServiceImplTest {
         );
 
         assertThat(response.scoreDelta()).isNull();
-        assertThat(response.outcome()).isEqualTo("NOT_COMPARABLE");
+        assertThat(response.outcome()).isEqualTo(RegressionComparisonOutcome.NOT_COMPARABLE);
         assertThat(response.regressionReasons()).contains(
                 "Baseline run has no pass/fail result.",
                 "Baseline run has no score."
@@ -166,8 +202,8 @@ class RegressionComparisonServiceImplTest {
                 null,
                 null,
                 null,
-                new BigDecimal("0.20"),
-                Map.of("contextWindow", 4096, "numPredict", 512),
+                BigDecimal.ZERO,
+                Map.of("contextWindow", 4096, "numPredict", 128),
                 status,
                 passed,
                 score,

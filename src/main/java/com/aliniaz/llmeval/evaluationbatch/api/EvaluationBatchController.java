@@ -1,7 +1,9 @@
 package com.aliniaz.llmeval.evaluationbatch.api;
 
 import com.aliniaz.llmeval.evaluationbatch.api.request.CreateEvaluationBatchRequest;
+import com.aliniaz.llmeval.evaluationbatch.api.response.EvaluationBatchComparisonResponse;
 import com.aliniaz.llmeval.evaluationbatch.api.response.EvaluationBatchResponse;
+import com.aliniaz.llmeval.evaluationbatch.service.EvaluationBatchComparisonService;
 import com.aliniaz.llmeval.evaluationbatch.service.EvaluationBatchService;
 import com.aliniaz.llmeval.evaluationrun.api.response.EvaluationRunResponse;
 import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunService;
@@ -17,6 +19,7 @@ import java.util.List;
 public class EvaluationBatchController {
 
     private final EvaluationBatchService evaluationBatchService;
+    private final EvaluationBatchComparisonService evaluationBatchComparisonService;
     private final EvaluationRunService evaluationRunService;
 
     @PostMapping("/api/workflows/{workflowId}/evaluation-batches")
@@ -31,6 +34,19 @@ public class EvaluationBatchController {
     @GetMapping("/api/workflows/{workflowId}/evaluation-batches")
     public List<EvaluationBatchResponse> getEvaluationBatches(@PathVariable Long workflowId) {
         return evaluationBatchService.getEvaluationBatches(workflowId);
+    }
+
+    @GetMapping("/api/workflows/{workflowId}/evaluation-batches/compare")
+    public EvaluationBatchComparisonResponse compareEvaluationBatches(
+            @PathVariable Long workflowId,
+            @RequestParam Long baselineBatchId,
+            @RequestParam Long candidateBatchId
+    ) {
+        return evaluationBatchComparisonService.compareEvaluationBatches(
+                workflowId,
+                baselineBatchId,
+                candidateBatchId
+        );
     }
 
     @GetMapping("/api/workflows/{workflowId}/evaluation-batches/{batchId}")

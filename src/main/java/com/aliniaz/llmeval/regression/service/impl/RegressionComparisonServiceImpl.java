@@ -3,6 +3,7 @@ package com.aliniaz.llmeval.regression.service.impl;
 import com.aliniaz.llmeval.evaluationrun.api.response.EvaluationRunResponse;
 import com.aliniaz.llmeval.evaluationrun.service.EvaluationRunService;
 import com.aliniaz.llmeval.regression.api.response.EvaluationRunComparisonResponse;
+import com.aliniaz.llmeval.regression.domain.RegressionComparisonOutcome;
 import com.aliniaz.llmeval.regression.service.RegressionComparisonService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RegressionComparisonServiceImpl implements RegressionComparisonService {
-
-    private static final String OUTCOME_IMPROVED = "IMPROVED";
-    private static final String OUTCOME_REGRESSED = "REGRESSED";
-    private static final String OUTCOME_UNCHANGED = "UNCHANGED";
-    private static final String OUTCOME_NOT_COMPARABLE = "NOT_COMPARABLE";
 
     private final EvaluationRunService evaluationRunService;
 
@@ -45,7 +41,7 @@ public class RegressionComparisonServiceImpl implements RegressionComparisonServ
                 scoreDelta
         );
 
-        String outcome = determineOutcome(
+        RegressionComparisonOutcome outcome = determineOutcome(
                 baselineRun,
                 candidateRun,
                 scoreDelta,
@@ -100,7 +96,7 @@ public class RegressionComparisonServiceImpl implements RegressionComparisonServ
         return reasons;
     }
 
-    private String determineOutcome(
+    private RegressionComparisonOutcome determineOutcome(
             EvaluationRunResponse baselineRun,
             EvaluationRunResponse candidateRun,
             BigDecimal scoreDelta,
@@ -110,25 +106,25 @@ public class RegressionComparisonServiceImpl implements RegressionComparisonServ
                 || candidateRun.passed() == null
                 || baselineRun.score() == null
                 || candidateRun.score() == null) {
-            return OUTCOME_NOT_COMPARABLE;
+            return RegressionComparisonOutcome.NOT_COMPARABLE;
         }
 
         if (Boolean.TRUE.equals(baselineRun.passed()) && Boolean.FALSE.equals(candidateRun.passed())) {
-            return OUTCOME_REGRESSED;
+            return RegressionComparisonOutcome.REGRESSED;
         }
 
         if (Boolean.FALSE.equals(baselineRun.passed()) && Boolean.TRUE.equals(candidateRun.passed())) {
-            return OUTCOME_IMPROVED;
+            return RegressionComparisonOutcome.IMPROVED;
         }
 
         if (!regressionReasons.isEmpty()) {
-            return OUTCOME_REGRESSED;
+            return RegressionComparisonOutcome.REGRESSED;
         }
 
         if (scoreDelta.compareTo(BigDecimal.ZERO) > 0) {
-            return OUTCOME_IMPROVED;
+            return RegressionComparisonOutcome.IMPROVED;
         }
 
-        return OUTCOME_UNCHANGED;
+        return RegressionComparisonOutcome.UNCHANGED;
     }
 }
